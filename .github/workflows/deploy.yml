@@ -14,9 +14,9 @@ jobs:
       - name: Deploy to VPS
         uses: appleboy/ssh-action@v1.0.3
         with:
-          host: ${{ secrets.VPS_HOST }}
-          username: ${{ secrets.VPS_USER }}
-          password: ${{ secrets.VPS_PASSWORD }}
+          host: ${{ secrets.SSH_HOST }}
+          username: ${{ secrets.SSH_USER }}
+          key: ${{ secrets.SSH_PRIVATE_KEY }}
           script: |
             set -e
 
@@ -25,7 +25,7 @@ jobs:
             # Clona o repositório se ainda não existir
             if [ ! -d "$APP_DIR/.git" ]; then
               echo "Clonando repositório pela primeira vez..."
-              git clone https://${{ secrets.GH_TOKEN }}@github.com/projetosmarcaseleta/smsSync.git $APP_DIR
+              git clone git@github.com:projetosmarcaseleta/smsSync.git $APP_DIR
             fi
 
             cd $APP_DIR
