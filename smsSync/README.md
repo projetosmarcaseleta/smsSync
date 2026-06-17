@@ -16,7 +16,7 @@ npm run dev
 
 ## Environment Variables
 
-- `PORT`: Server port (default: 3000)
+- `PORT`: Server port (default: 4000)
 
 ## API Endpoints
 
@@ -72,7 +72,7 @@ If fields are omitted, default test values will be used.
 
 **Example using curl:**
 ```bash
-curl -X POST http://localhost:3000/api/test-sms \
+curl -X POST http://localhost:4000/api/test-sms \
   -H "Content-Type: application/json" \
   -d '{"sender": "+1234567890", "message": "Test message"}'
 ```

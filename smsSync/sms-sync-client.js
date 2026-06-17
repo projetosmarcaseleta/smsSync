@@ -4,12 +4,12 @@
  *
  * Usage (Node.js):
  *   const { SmsSyncClient } = require('./sms-sync-client');
- *   const client = new SmsSyncClient({ url: 'ws://localhost:3000', token: 'your-secret' });
+ *   const client = new SmsSyncClient({ url: 'ws://localhost:4000', token: 'your-secret' });
  *   client.onMessage((msg) => console.log(msg));
  *   client.connect();
  *
  * Usage (Browser — include via <script>):
- *   const client = new SmsSyncClient({ url: 'ws://localhost:3000', token: 'your-secret' });
+ *   const client = new SmsSyncClient({ url: 'ws://localhost:4000', token: 'your-secret' });
  *   client.onMessage((msg) => console.log(msg));
  *   client.connect();
  */
@@ -28,7 +28,7 @@
   class SmsSyncClient {
     /**
      * @param {object} opts
-     * @param {string} opts.url       WebSocket URL  (ex: 'ws://192.168.1.10:3000')
+     * @param {string} opts.url       WebSocket URL  (ex: 'ws://192.168.1.10:4000')
      * @param {string} [opts.token]   API secret (optional, must match server API_SECRET)
      * @param {number} [opts.reconnectDelay=5000]  ms to wait before reconnect
      */
