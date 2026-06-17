@@ -37,7 +37,7 @@ jobs:
 
             # Instala dependências de produção
             echo "Instalando dependências..."
-            npm ci --omit=dev
+            npm install --omit=dev
 
             # Garante que o .env existe
             if [ ! -f ".env" ]; then
