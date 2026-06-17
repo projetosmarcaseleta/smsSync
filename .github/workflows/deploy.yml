@@ -7,11 +7,24 @@ on:
 
 jobs:
   deploy:
-    name: Deploy via SSH
+    name: Deploy via SCP and SSH
     runs-on: ubuntu-latest
 
     steps:
-      - name: Deploy to VPS
+      - name: Checkout Repository
+        uses: actions/checkout@v4
+
+      - name: Copy files via SCP
+        uses: appleboy/scp-action@v0.1.7
+        with:
+          host: ${{ secrets.SSH_HOST }}
+          username: ${{ secrets.SSH_USER }}
+          key: ${{ secrets.SSH_PRIVATE_KEY }}
+          source: "."
+          target: "/var/www/smsSync"
+          rm: true # Opcional: remove arquivos antigos antes de copiar
+          
+      - name: Install dependencies and Restart Application via SSH
         uses: appleboy/ssh-action@v1.0.3
         with:
           host: ${{ secrets.SSH_HOST }}
@@ -19,31 +32,24 @@ jobs:
           key: ${{ secrets.SSH_PRIVATE_KEY }}
           script: |
             set -e
-
-            APP_DIR="/var/www/smsSync"
-
-            # Clona o repositório se ainda não existir
-            if [ ! -d "$APP_DIR/.git" ]; then
-              echo "Clonando repositório pela primeira vez..."
-              git clone git@github.com:projetosmarcaseleta/smsSync.git $APP_DIR
-            fi
-
-            cd $APP_DIR
-
-            # Atualiza o código
-            echo "Atualizando código..."
-            git pull origin main
+            
+            cd /var/www/smsSync/smsSync
 
             # Instala dependências de produção
-            cd smsSync
             echo "Instalando dependências..."
             npm ci --omit=dev
 
-            # Garante que o .env existe (deve ser criado manualmente na VPS uma vez)
+            # Garante que o .env existe
             if [ ! -f ".env" ]; then
-              echo "AVISO: arquivo .env não encontrado em $APP_DIR/smsSync/.env"
+              echo "AVISO: arquivo .env não encontrado em /var/www/smsSync/smsSync/.env"
               echo "Crie o arquivo manualmente na VPS antes de iniciar."
               exit 1
+            fi
+
+            # Garante que o PM2 está instalado globalmente
+            if ! command -v pm2 &> /dev/null; then
+              echo "Instalando PM2..."
+              npm install -g pm2
             fi
 
             # Inicia ou reinicia com PM2
@@ -52,7 +58,7 @@ jobs:
               pm2 restart smsSync
             else
               pm2 start server.js --name smsSync
-              pm2 save
             fi
+            pm2 save
 
             echo "Deploy concluído com sucesso!"
