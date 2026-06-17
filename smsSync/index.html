@@ -1,0 +1,117 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Document</title>
+</head>
+<body>
+    <script>
+         const client = new SmsSyncClient({ url: 'ws://localhost:3000', token: 'your-secret' });
+ client.onMessage((msg) => console.log(msg));
+ client.connect();
+ 
+(function (root, factory) {
+  if (typeof module !== 'undefined' && module.exports) {
+    // Node.js
+    const WS = require('ws');
+    module.exports = factory(WS);
+  } else {
+    // Browser
+    root.SmsSyncClient = factory(WebSocket).SmsSyncClient;
+  }
+}(typeof globalThis !== 'undefined' ? globalThis : this, function (WS) {
+
+  class SmsSyncClient {
+    /**
+     * @param {object} opts
+     * @param {string} opts.url       WebSocket URL  (ex: 'ws://192.168.1.10:3000')
+     * @param {string} [opts.token]   API secret (optional, must match server API_SECRET)
+     * @param {number} [opts.reconnectDelay=5000]  ms to wait before reconnect
+     */
+    constructor(opts = {}) {
+      if (!opts.url) throw new Error('SmsSyncClient: opts.url is required');
+      this._url = opts.token
+        ? `${opts.url}?token=${encodeURIComponent(opts.token)}`
+        : opts.url;
+      this._reconnectDelay = opts.reconnectDelay || 5000;
+      this._handlers = { message: [], connect: [], disconnect: [], error: [] };
+      this._ws = null;
+      this._stopped = false;
+    }
+
+    /** Register a callback that fires for every SMS or MMS received.
+     *  @param {function} fn - called with { type, sender, message, subject, timestamp }
+     */
+    onMessage(fn) { this._handlers.message.push(fn); return this; }
+
+    /** Fires when the WebSocket connection is established. */
+    onConnect(fn) { this._handlers.connect.push(fn); return this; }
+
+    /** Fires when the connection drops (before reconnect attempt). */
+    onDisconnect(fn) { this._handlers.disconnect.push(fn); return this; }
+
+    /** Fires on connection errors. */
+    onError(fn) { this._handlers.error.push(fn); return this; }
+
+    connect() {
+      this._stopped = false;
+      this._open();
+      return this;
+    }
+
+    disconnect() {
+      this._stopped = true;
+      if (this._ws) this._ws.close();
+    }
+
+    _open() {
+      const ws = new WS(this._url);
+      this._ws = ws;
+
+      ws.addEventListener('open', () => {
+        this._emit('connect', { url: this._url });
+      });
+
+      ws.addEventListener('message', (event) => {
+        let data;
+        try { data = JSON.parse(event.data); } catch { return; }
+
+        // Skip the handshake message
+        if (data.type === 'connected') return;
+
+        const msg = {
+          type:      data.type || 'sms',          // 'sms' | 'mms'
+          sender:    data.sender    || '',
+          message:   data.message   || '',
+          subject:   data.subject   || null,
+          timestamp: data.timestamp || new Date().toISOString(),
+        };
+
+        this._emit('message', msg);
+      });
+
+      ws.addEventListener('close', () => {
+        this._emit('disconnect', {});
+        if (!this._stopped) {
+          setTimeout(() => this._open(), this._reconnectDelay);
+        }
+      });
+
+      ws.addEventListener('error', (err) => {
+        this._emit('error', err);
+      });
+    }
+
+    _emit(event, payload) {
+      for (const fn of this._handlers[event]) {
+        try { fn(payload); } catch (e) { console.error('SmsSyncClient handler error:', e); }
+      }
+    }
+  }
+
+  return { SmsSyncClient };
+}));
+    </script>
+</body>
+</html>
