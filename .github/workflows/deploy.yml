@@ -1,0 +1,58 @@
+name: Deploy to VPS
+
+on:
+  push:
+    branches:
+      - main
+
+jobs:
+  deploy:
+    name: Deploy via SSH
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Deploy to VPS
+        uses: appleboy/ssh-action@v1.0.3
+        with:
+          host: ${{ secrets.VPS_HOST }}
+          username: ${{ secrets.VPS_USER }}
+          password: ${{ secrets.VPS_PASSWORD }}
+          script: |
+            set -e
+
+            APP_DIR="/var/www/smsSync"
+
+            # Clona o repositório se ainda não existir
+            if [ ! -d "$APP_DIR/.git" ]; then
+              echo "Clonando repositório pela primeira vez..."
+              git clone https://${{ secrets.GH_TOKEN }}@github.com/projetosmarcaseleta/smsSync.git $APP_DIR
+            fi
+
+            cd $APP_DIR
+
+            # Atualiza o código
+            echo "Atualizando código..."
+            git pull origin main
+
+            # Instala dependências de produção
+            cd smsSync
+            echo "Instalando dependências..."
+            npm ci --omit=dev
+
+            # Garante que o .env existe (deve ser criado manualmente na VPS uma vez)
+            if [ ! -f ".env" ]; then
+              echo "AVISO: arquivo .env não encontrado em $APP_DIR/smsSync/.env"
+              echo "Crie o arquivo manualmente na VPS antes de iniciar."
+              exit 1
+            fi
+
+            # Inicia ou reinicia com PM2
+            echo "Reiniciando aplicação com PM2..."
+            if pm2 list | grep -q "smsSync"; then
+              pm2 restart smsSync
+            else
+              pm2 start server.js --name smsSync
+              pm2 save
+            fi
+
+            echo "Deploy concluído com sucesso!"
