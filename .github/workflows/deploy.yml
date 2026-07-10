@@ -24,7 +24,7 @@ jobs:
           target: "/var/www/smsSync"
           rm: true # Opcional: remove arquivos antigos antes de copiar
           
-      - name: Install dependencies and Restart Application via SSH
+      - name: Install dependencies and Restart Applications via SSH
         uses: appleboy/ssh-action@v1.0.3
         with:
           host: ${{ secrets.SSH_HOST }}
@@ -33,10 +33,18 @@ jobs:
           script: |
             set -e
             
+            # Garante que o PM2 está instalado globalmente
+            if ! command -v pm2 &> /dev/null; then
+              echo "Instalando PM2..."
+              npm install -g pm2
+            fi
+
+            # --- Configuração do smsSync ---
+            echo "Configurando smsSync..."
             cd /var/www/smsSync/smsSync
 
             # Instala dependências de produção
-            echo "Instalando dependências..."
+            echo "Instalando dependências do smsSync..."
             npm install --omit=dev
 
             # Garante que o .env existe
@@ -46,19 +54,36 @@ jobs:
               exit 1
             fi
 
-            # Garante que o PM2 está instalado globalmente
-            if ! command -v pm2 &> /dev/null; then
-              echo "Instalando PM2..."
-              npm install -g pm2
-            fi
-
             # Inicia ou reinicia com PM2
-            echo "Reiniciando aplicação com PM2..."
+            echo "Reiniciando smsSync com PM2..."
             if pm2 list | grep -q "smsSync"; then
               pm2 restart smsSync
             else
               pm2 start server.js --name smsSync
             fi
-            pm2 save
 
-            echo "Deploy concluído com sucesso!"
+            # --- Configuração do velloTalk ---
+            echo "Configurando velloTalk..."
+            cd /var/www/smsSync/velloTalk
+
+            # Instala dependências de produção
+            echo "Instalando dependências do velloTalk..."
+            npm install --omit=dev
+
+            # Garante que o .env existe
+            if [ ! -f ".env" ]; then
+              echo "AVISO: arquivo .env não encontrado em /var/www/smsSync/velloTalk/.env"
+              echo "Crie o arquivo manualmente na VPS antes de iniciar."
+              exit 1
+            fi
+
+            # Inicia ou reinicia com PM2
+            echo "Reiniciando velloTalk com PM2..."
+            if pm2 list | grep -q "velloTalk"; then
+              pm2 restart velloTalk
+            else
+              pm2 start sms-ws-bridge.mjs --name velloTalk --node-args="--env-file=.env"
+            fi
+
+            pm2 save
+            echo "Deploy de ambas as aplicações concluído com sucesso!"

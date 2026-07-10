@@ -1,0 +1,14 @@
+{
+  "name": "vello-sms-bridge",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Bridge WebSocket que conecta o gateway SMS/MMS ao webhook do Vello",
+  "main": "sms-ws-bridge.mjs",
+  "scripts": {
+    "start": "node --env-file=.env sms-ws-bridge.mjs"
+  },
+  "dependencies": {
+    "process": "^0.11.10",
+    "ws": "^8.21.0"
+  }
+}
