@@ -1,0 +1,21 @@
+# General
+.DS_Store
+*.pem
+.idea/
+
+# Backend (Node.js)
+/backend/node_modules
+/backend/.env
+npm-debug.log
+yarn-error.log
+
+# Android App
+/android-app/node_modules
+/android-app/build/
+/android-app/app/build/
+/android-app/.gradle/
+/android-app/local.properties
+/android-app/*.iml
+/android-app/app/gradle/
+/android-app/*.keystore
+/android-app/*.jks
