@@ -1,5 +1,6 @@
 # Dependências
 node_modules/
+package-lock.json
 
 # Variáveis de ambiente (nunca commitar!)
 .env

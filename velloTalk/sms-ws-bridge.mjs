@@ -68,6 +68,7 @@ function log(...args) {
 }
 
 async function forwardToVello(payload) {
+  log("→ vello payload:", JSON.stringify(payload));
   try {
     const res = await fetch(VELLO_WEBHOOK_URL, {
       method: "POST",
@@ -160,6 +161,7 @@ function connect() {
     alive = true;
     const text = typeof raw === "string" ? raw : raw?.data ?? raw?.toString?.();
     if (!text) return;
+    log("← ws body:", text);
     let msg;
     try { msg = JSON.parse(text); } catch { log("non-json ignored:", String(text).slice(0, 80)); return; }
     if (msg && typeof msg === "object" && msg.type) {

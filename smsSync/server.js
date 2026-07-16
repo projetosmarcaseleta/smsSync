@@ -14,6 +14,29 @@ const wss = new WebSocket.Server({ server });
 const clients = new Set();
 const deviceClients = new Set();
 
+// Backlog of SMS/MMS that had nobody to deliver to (bridge disconnected/reconnecting).
+// Replayed to the next extension client that connects so a message never gets lost just
+// because it arrived during a reconnect window. Bounded by count and age so a long outage
+// doesn't replay stale data or grow without limit.
+const pendingMessages = [];
+const PENDING_MAX_SIZE = 50;
+const PENDING_MAX_AGE_MS = 30 * 60 * 1000; // 30 min
+
+function bufferPendingMessage(smsData) {
+  pendingMessages.push({ data: smsData, queuedAt: Date.now() });
+  while (pendingMessages.length > PENDING_MAX_SIZE) pendingMessages.shift();
+}
+
+function flushPendingMessages(ws) {
+  const cutoff = Date.now() - PENDING_MAX_AGE_MS;
+  const toSend = pendingMessages.filter((entry) => entry.queuedAt >= cutoff);
+  pendingMessages.length = 0;
+
+  if (toSend.length === 0) return;
+  console.log(`Replaying ${toSend.length} buffered message(s) to newly connected extension`);
+  toSend.forEach((entry) => ws.send(JSON.stringify(entry.data)));
+}
+
 const API_SECRET = process.env.API_SECRET;
 
 // Middleware to authenticate API requests
@@ -103,6 +126,9 @@ wss.on('connection', (ws, req) => {
     type: 'connected',
     message: 'Connected to SMS Sync server'
   }));
+
+  // Deliver anything that arrived while no extension was connected to receive it.
+  if (role !== 'device') flushPendingMessages(ws);
 });
 
 // Helper function to broadcast SMS to all connected Chrome extensions
@@ -116,6 +142,10 @@ function broadcastSMS(smsData) {
       sentCount++;
     }
   });
+
+  // Nobody was connected to receive it — buffer it so it isn't lost, and replay it once
+  // an extension (re)connects instead of only relying on it being sent live.
+  if (sentCount === 0) bufferPendingMessage(smsData);
 
   return sentCount;
 }
